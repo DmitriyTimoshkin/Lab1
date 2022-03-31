@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # import random
+from pprint import pprint
+
 import numpy as np
 import secrets
 import pygame
@@ -72,18 +74,23 @@ def deikstra(arr):
         a = np.argmin(prom_arr)
         y = a // WIDTH
         x = a % WIDTH
+
         if x - 1 >= 0 and proi_wae[y][x - 1] == 0:
-            if (wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x - 1]) < wae[y][x - 1]):
+            if wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x - 1]) < wae[y][x - 1]:
                 wae[y][x - 1] = wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x - 1])
+
         if x + 1 <= WIDTH - 1 and proi_wae[y][x + 1] == 0:
-            if (wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x + 1]) < wae[y][x + 1]):
+            if wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x + 1]) < wae[y][x + 1]:
                 wae[y][x + 1] = wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y][x + 1])
+
         if y - 1 >= 0 and proi_wae[y - 1][x] == 0:
-            if (wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y - 1][x]) < wae[y - 1][x]):
+            if wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y - 1][x]) < wae[y - 1][x]:
                 wae[y - 1][x] = wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y - 1][x])
+
         if y + 1 <= WIDTH - 1 and proi_wae[y + 1][x] == 0:
-            if (wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y + 1][x]) < wae[y + 1][x]):
+            if wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y + 1][x]) < wae[y + 1][x]:
                 wae[y + 1][x] = wae[y][x] + (WIDTH ** 2 + 1) ** (1 - arr[y + 1][x])
+
         proi_wae[y][x] = FPS
         cumzone = np.cumsum(proi_wae[WIDTH - 1])
     # print(wae)
@@ -115,6 +122,94 @@ def deikstra(arr):
     return omega_wae
 
 
+class Cluster:
+    """docstring"""
+
+    def __init__(self, number, cells):
+        """Constructor"""
+        self.number = number
+        self.cells = cells
+
+    # Добавление всех точек из кластера other
+    def __add__(self, other):
+        self.cells = self.cells + other.cells
+        return self.cells
+
+    def __repr__(self):
+        return "{" + str(self.number) + ", " + str(self.cells) + "}"
+
+
+def kopelman(arr):
+    mat = arr  # Создает матрицу копию
+
+    clusters = []
+
+    number = 1
+    for i, string in enumerate(mat):
+        for j, val in enumerate(string):
+
+            if mat[i][j] == 1:  # Проверяем, что клетка иммеет значение 1 (чёрная)
+
+                # Общий случай есть клетка сверху и с лева чёрные
+                if i != 0 and mat[i-1][j] > 0:                  # Проверяем есть ли верхняя клетка и черная ли она
+
+                    if j != 0 and mat[i][j-1] > 0:              # Проверяем есть ли левая клетка и черная ли она
+
+                        up_number = int(mat[i-1][j])                 # Номер кластера верхний клетки
+                        clusters.append(Cluster(up_number, [(i, j)]))
+                        mat[i][j] = up_number
+
+                        if mat[i][j-1] != up_number:
+                            for element in clusters:
+                                if element.number == mat[i][j-1]:
+                                    element.number = up_number
+
+                            for n, string2 in enumerate(mat):
+                                for m, val2 in enumerate(string):
+                                    if mat[n][m] == mat[i][j-1]:
+                                        mat[n][m] = up_number
+
+                    # Проверяем белая левая, чёрная верхняя ? (да)
+                    if mat[i][j - 1] == 0:
+                        up_number = int(mat[i - 1][j])  # Номер кластера верхний клетки
+                        clusters.append(Cluster(up_number, [(i, j)]))
+                        mat[i][j] = up_number
+
+                # Проверяем белая верхняя, чёрная левая ? (да)
+                if i != 0 and mat[i - 1][j] == 0:
+                    if j != 0 and mat[i][j - 1] > 0:
+                        left_number = int(mat[i][j-1])  # Номер кластера левой клетки
+                        clusters.append(Cluster(left_number, [(i, j)]))
+                        mat[i][j] = left_number
+
+                # Нет чёрных клеток сверху и слева
+                if i != 0 and mat[i-1][j] == 0:
+                    if j != 0 and mat[i][j - 1] == 0:
+                        clusters.append(Cluster(number, [(i, j)]))
+                        mat[i][j] = number
+
+                if i == 0:
+                    # Частный случай первая ячейка таблицы
+                    if j == 0:
+                        clusters.append(Cluster(number, [(i, j)]))
+                        mat[i][j] = number
+                    # Частный случай первая строка таблицы
+                    elif j > 0:
+                        left_number = int(mat[i][j - 1])  # Номер кластера левой клетки
+                        clusters.append(Cluster(left_number, [(i, j)]))
+                        mat[i][j] = left_number
+
+                # Частный случай первый столбец таблицы
+                elif i > 0 and j == 0:
+                    up_number = int(mat[i - 1][j])  # Номер кластера верхний клетки
+                    clusters.append(Cluster(up_number, [(i, j)]))
+                    mat[i][j] = up_number
+
+                number += 1
+
+    pprint(clusters)
+
+
 def init():
     arr = np.ndarray((WIDTH, HEIGHT))
     param = 59  # 59
@@ -136,6 +231,9 @@ def main():
 
     f = False
     per = deikstra(arr)
+    print(arr)
+    kopelman(arr)
+
     while run:
         for i in pygame.event.get():
             if i.type == pygame.QUIT:
